@@ -31,14 +31,14 @@ Authenticating to the AT Protocol requires a Bluesky handle and an application p
 
 ### 💻 Command Line
 
-Global command-line options:
+#### 🌍 Global command-line options:
 * **--handle**: Your full Bluesky handle (not necessary if entered in the .env file)
 * **--app-password**: Your Bluesky app password (not necessary if entered in the .env file)
 * **-h/--help**: Print the help menu
 
 Example: `bsky_multitool --help`
 
-#### Stream mode command-line options:
+#### 🚰 Stream mode command-line options:
 * **--filter-term**: Term to filter stream events by for collection. Can take simple strings, regex strings, or re.Pattern objects (only as a module only).
 * **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
 * **--has-link**: Limit collection to events featuring a link.
@@ -51,7 +51,7 @@ Example: `bsky_multitool --help`
 
 Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)' --type post --type quote --cutoff-time '2025-06-25 18:30' --file-format csv`
 
-#### Historical mode command-line options:
+#### 🕰️ Historical mode command-line options:
 * **--filter-term**: Term to filter stream events by for collection. Can only take simple strings.
 * **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
 * **--has-link**: Limit collection to events featuring a link.
