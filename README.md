@@ -1,6 +1,6 @@
 # bsky_multitool
 
-**bsky_multitool** is a Python interface for collecting data from the AT Protocol underlying Bluesky. It can be used both as a command-line tool and as an importable module and is geared towards media analysis.
+**bsky_multitool** is a Python interface for collecting data from the AT Protocol underlying Bluesky. It can be used both as a command-line tool or as an importable module and is geared towards media analysis.
 
 It supports two modes:
 1. **stream**: Collect data in real-time as it is streamed through the AT Firehose
@@ -38,7 +38,7 @@ Global command-line options:
 
 Example: `bsky_multitool --help`
 
-Stream mode command-line options:
+#### Stream mode command-line options:
 * **--filter-term**: Term to filter stream events by for collection. Can take simple strings, regex strings, or re.Pattern objects (only as a module only).
 * **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
 * **--has-link**: Limit collection to events featuring a link.
@@ -49,9 +49,9 @@ Stream mode command-line options:
 * **--file-format**: Format of the output file. Options include: 'csv', 'json', and 'jsonl'.
 * **--help**: Print stream mode help menu
 
-Example: `bsky_multitool stream --filter-term '(?=.*\bisrael\b)(?=.*\biran\b)' --type post --type quote --cutoff-time '2025-06-25 18:30' --file-format csv`
+Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)' --type post --type quote --cutoff-time '2025-06-25 18:30' --file-format csv`
 
-Stream mode command-line options:
+#### Historical mode command-line options:
 * **--filter-term**: Term to filter stream events by for collection. Can only take simple strings.
 * **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
 * **--has-link**: Limit collection to events featuring a link.
