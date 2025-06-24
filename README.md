@@ -20,6 +20,8 @@ To install bsky_multitool, follow these steps:
 
 4. Optionally (but recommended for convenience), enter your full Bluesky handle (i.e. {handle}.bsky.social) and app password in the .env-template file included in the repo and rename the file to .env
 
+**Note**: Authenticating to the AT Protocol requires a Bluesky handle and an application password. App passwords can be obtained at https://bsky.app/settings/app-passwords.
+
 bsky_multiool can now be used a command-line utility from anywhere in your directory structure or accessed as a module via `import bsky_multitool`.
 
 It is recommended that installation and setup are executed within a virtual environment. Python virtual environments can be created via either Conda or Python's built-in venv module.
@@ -27,8 +29,6 @@ It is recommended that installation and setup are executed within a virtual envi
 * **venv**: https://www.w3schools.com/python/python_virtualenv.asp
 
 ## Usage
-Authenticating to the AT Protocol requires a Bluesky handle and an application password. App passwords can be obtained at https://bsky.app/settings/app-passwords.
-
 ### 💻 Command Line
 
 #### 🌍 Global command-line options:
@@ -60,7 +60,7 @@ Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)'
 * **--batch-size**: Number of items to include in each output file. (only relevant when file-format is set to 'json')
 * **--outdir**: The name of the directory where output will be saved. (defaults to 'bsky_historical')
 * **--file-format**: Format of the output file. Options include: 'csv', 'json', and 'jsonl'.
-* **--help**: Print stream mode help menu
+* **--help**: Print historical mode help menu
 
 Example: `bsky_multitool historical --filter-term 'Gaza' --type quote --type reply --max-items 250 --has-link --file-format csv`
 
