@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# dotenv secrets
+.env
+.env.*.local
+
+# IDE/editor metadata
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS Finder
+.DS_Store
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# Output directory for JSON dumps
+/bsky_hose_json/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# PyTest cache
+.pytest_cache/
