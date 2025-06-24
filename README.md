@@ -69,7 +69,7 @@ To run global options alongside a bsky_multitool mode, place them immediately pr
 
 ### 🧩 Importable Module
 
-**Streamer**:
+**🚰 Streamer**:
 ```python
 import os
 import re
@@ -101,7 +101,7 @@ results = streamer.start(
 )
 ```
 
-**HistoricalQuery**:
+**🕰️ HistoricalQuery**:
 ```python
 import os
 import re
