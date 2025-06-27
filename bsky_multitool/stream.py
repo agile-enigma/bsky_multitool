@@ -105,7 +105,7 @@ def monitor_bsky_firehose(test_function, handler):
 
 
 # # ──────────── FirehoseStreamer ───────────────────────────────────────
-class FirehoseStreamer:
+class firehoseStreamer:
     def __init__(
         self,
         handle:             Optional[str]            = None,

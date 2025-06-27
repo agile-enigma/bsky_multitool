@@ -1,3 +1,5 @@
 # bsky_multitool/__init__.py
-from .stream import FirehoseStreamer
-from .historical_query import HistoricalQuery
+from .stream import firehoseStreamer
+from .historical_query import historicalQuery
+from .get_followers import getFollowers
+from .get_following import getFollowing

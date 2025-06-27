@@ -1,3 +1,4 @@
+import csv
 from dateutil import parser
 import os
 import time
@@ -13,15 +14,19 @@ from atproto_client.exceptions import UnauthorizedError
 from dotenv import load_dotenv
 
 # Import package functions and classes
-from .stream import FirehoseStreamer
-from .historical_query import HistoricalQuery
+from .stream import firehoseStreamer
+from .historical_query import historicalQuery
+from .get_followers import getFollowers
+from .get_following import getFollowing
+
 from .utils import (
+    _safe_json,
     dump_to_file,
     finalize_item_processing,
     has_term,
     make_cached_fetchers,
     master_filter,
-    normalize_cutoff_time,
+    normalize_cutoff_time
 )
 
 # Load .env automatically (from project root)
@@ -86,7 +91,7 @@ def stream(
             click.echo(f"{err}", err=True)
             sys.exit(1)
 
-    streamer = FirehoseStreamer(
+    streamer = firehoseStreamer(
         client             = ctx.obj["client"],
         get_author_data_fn = ctx.obj["get_author_data"],
         get_post_data_fn   = ctx.obj["get_post_data"]
@@ -189,7 +194,7 @@ def historical(
             click.echo(f"\n{err}\n", err=True)
             sys.exit(1)
 
-    hquery = HistoricalQuery(
+    hquery = historicalQuery(
         client             = ctx.obj["client"],
         get_author_data_fn = ctx.obj["get_author_data"],
         get_post_data_fn   = ctx.obj["get_post_data"],
@@ -240,6 +245,92 @@ def historical(
         if file_format == 'json':
             print('\nPerforming final flush...', end='\n\n')
             dump_to_file(None, **dump_kwargs, final_flush=True)
+
+#--------------------------***GET FOLLOWERS INTERFACE***-----------------------------
+@cli.command()
+@click.option("--did-or-handle", required=True, help="DID or handle of the account you want the followers of.")
+@click.option("--out-dir", default="bsky_followers", show_default=True)
+@click.option(
+    "--file-format",
+    type=click.Choice(["json", "jsonl", "csv"], case_sensitive=False),
+    default="json",
+    show_default=True,
+    help="Choose output file format."
+)
+@click.pass_context
+def followers(ctx, did_or_handle, out_dir, file_format):
+    followersGetter = getFollowers(client= ctx.obj["client"])
+    followers = followersGetter.get_followers(did_or_handle)
+    if not followers:
+        print(f'No followers found for {did_or_handle}.')
+        sys.exit(0)
+
+    outdir_path   = Path(out_dir)
+    outdir_path.mkdir(parents=True, exist_ok=True)
+
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    filename = f"{did_or_handle}_followers_{timestamp}"
+
+    file_path = outdir_path / f'{filename}.json'
+
+    if file_format   == 'json':
+        with file_path.open('w') as f:
+            json.dump(followers, f, default=_safe_json, indent=2)
+    elif file_format == 'jsonl':
+        file_path = file_path.with_suffix('.jsonl')
+        with file_path.open('a') as f:
+            for follower in followers:
+                f.write(json.dumps(follower, default=_safe_json) + '\n')
+    elif file_format == 'csv':
+        file_path = file_path.with_suffix('.csv')
+        with file_path.open('a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=followers[0].keys())
+            writer.writeheader()
+            writer.writerows(followers)
+
+
+#--------------------------***GET FOLLOWING INTERFACE***-----------------------------
+@cli.command()
+@click.option("--did-or-handle", required=True, help="DID or handle of the account you want the followers of.")
+@click.option("--out-dir", default="bsky_following", show_default=True)
+@click.option(
+    "--file-format",
+    type=click.Choice(["json", "jsonl", "csv"], case_sensitive=False),
+    default="json",
+    show_default=True,
+    help="Choose output file format."
+)
+@click.pass_context
+def following(ctx, did_or_handle, out_dir, file_format):
+    followingGetter = getFollowing(client= ctx.obj["client"])
+    following = followingGetter.get_following(did_or_handle)
+    if not following:
+        print(f'No accounts followed by {did_or_handle}.')
+        sys.exit(0)
+
+    outdir_path   = Path(out_dir)
+    outdir_path.mkdir(parents=True, exist_ok=True)
+
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    filename = f"{did_or_handle}_following_{timestamp}"
+
+    file_path = outdir_path / f'{filename}.json'
+
+    if file_format   == 'json':
+        with file_path.open('w') as f:
+            json.dump(following, f, default=_safe_json, indent=2)
+    elif file_format == 'jsonl':
+        file_path = file_path.with_suffix('.jsonl')
+        with file_path.open('a') as f:
+            for followed in following:
+                f.write(json.dumps(followed, default=_safe_json) + '\n')
+    elif file_format == 'csv':
+        file_path = file_path.with_suffix('.csv')
+        with file_path.open('a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=following[0].keys())
+            writer.writeheader()
+            writer.writerows(following)
+
 
 if __name__ == "__main__":
     cli()

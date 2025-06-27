@@ -64,6 +64,22 @@ Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)'
 
 Example: `bsky_multitool historical --filter-term 'Gaza' --type quote --type reply --max-items 250 --has-link --file-format csv`
 
+#### 👥 Get Followers mode command-line options:
+* **--did-or-handle**: DID or handle of the account you want the followers of.
+* **--outdir**: The name of the directory where output will be saved. (defaults to 'bsky_followers')
+* **--file-format**: Format of the output file. Options include: 'csv', 'json', and 'jsonl'.
+* **--help**: Print get followers mode help menu
+
+Example: `bsky_multitool followers --did-or-handle bsky.app --file-format csv`
+
+#### 👣 Get Accounts Followed mode command-line options:
+* **--did-or-handle**: DID or handle of the account you want the followed accounts of.
+* **--outdir**: The name of the directory where output will be saved. (defaults to 'bsky_following')
+* **--file-format**: Format of the output file. Options include: 'csv', 'json', and 'jsonl'.
+* **--help**: Print get followers mode help menu
+
+Example: `bsky_multitool following --did-or-handle bsky.app --file-format jsonl`
+
 To run global options alongside a bsky_multitool mode, place them immediately prior to the mode designator:
 `bsky_multitool --handle my_handle.bsky.social --app-password myapppassword historical --filter-term 'Gaza' --type quote --type reply --max-items 250 --has-link --file-format csv`
 
@@ -131,7 +147,56 @@ response = hq.query(
 )
 ```
 
-## 📄 Output Fields
+**👥 Get Followers**:
+```python
+import os
+import re
+import sys
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from bsky_multitool import getFollowers
+
+
+handle = os.getenv('BSKY_HANDLE')
+app_password = os.getenv('BSKY_APP_PSWD')
+
+gf = getFollowers(
+    handle       = handle,
+    app_password = app_password,
+)
+
+followers = gf.get_followers(
+    did_or_handle = 'bsky.app'
+)
+```
+
+**👣 Get Following**:
+```python
+import os
+import re
+import sys
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from bsky_multitool import getFollowing
+
+handle = os.getenv('BSKY_HANDLE')
+app_password = os.getenv('BSKY_APP_PSWD')
+
+gf = getFollowing(
+    handle       = handle,
+    app_password = app_password
+)
+
+following = gf.get_following(
+    did_or_handle = 'citizenptnewsco.bsky.social'
+)
+```
+
+## 📄 Output Fields for Historical and Streamer Modes
 
 | Field                  | Description |
 |------------------------|-------------|
@@ -181,3 +246,20 @@ response = hq.query(
 | `target_handle`        | Handle of the target user |
 | `target_display_name`  | Display name of the target user |
 | `target_data_text`     | Text from the target post (e.g. in replies/quotes) |
+
+
+## 📄 Output Fields for Followers and Following Modes
+| Field          | Description                                                                 |
+|----------------|-----------------------------------------------------------------------------|
+| `did`          | The Decentralized Identifier (DID) of the account.                          |
+| `handle`       | The human-readable handle (e.g. `@user.bsky.social`).                       |
+| `associated`   | Linked DIDs or alternate identities, if any.                                |
+| `avatar`       | URL to the user's profile image.                                            |
+| `created_at`   | Timestamp of when the account was created.                                  |
+| `description`  | User-provided biography text.                                               |
+| `display_name` | User’s display name (may differ from handle).                               |
+| `indexed_at`   | Time when the account was indexed by the client.                            |
+| `labels`       | Content or moderation labels associated with the user.                      |
+| `verification` | Verification data (e.g. domain or identity proofs).                         |
+| `viewer`       | Viewer-specific data (e.g. whether you follow them, muted, etc.).           |
+| `py_type`      | Internal type used by the Python client (e.g. for serialization).           |

@@ -36,7 +36,7 @@ from .utils import (
 )
 
 
-class HistoricalQuery:
+class historicalQuery:
     def __init__(
         self,
         handle:       Optional[str]            = None,
