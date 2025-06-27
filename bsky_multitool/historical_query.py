@@ -82,13 +82,13 @@ class historicalQuery:
         }
 
     def _handle_item(self, item, to_row, dump_kwargs, results) -> None:
+        self.item_count += 1
         if not dump_kwargs:
             item_structured = finalize_item_processing(item, self.get_author_data_cached, self.get_post_data_cached)
             if to_row:
                 results.append(flatten_json(item_structured))
             else:
                 results.append(item_structured)
-            self.item_count += 1
             print(f'{self.item_count} items processed', end='\r', flush=True)
         else:
             dump_to_file(item, **dump_kwargs)
@@ -97,8 +97,8 @@ class historicalQuery:
         self,
         filter_term:  str,
         type_filter:  Optional[list]                 = None,
-        has_link:     bool                           = None,
-        max_items:    int                            = None,
+        has_link:     bool                           = False,
+        max_items:    Optional[int]                  = None,
         cutoff_time:  Optional[Union[str, datetime]] = None,
         to_row:       bool                           = True,
         batch_size:   int                            = 20, # <- IS THIS EVEN APPLICABLE IN NON-CLI MODE?

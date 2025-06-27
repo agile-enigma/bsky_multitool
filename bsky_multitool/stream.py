@@ -172,7 +172,7 @@ class firehoseStreamer:
         self,
         filter_term: Optional[str]                    = None,
         type_filter: Optional[List[str]]              = None,
-        has_link:    Optional[bool]                   = None,
+        has_link:    Optional[bool]                   = False,
         max_items:   Optional[int]                    = None,
         cutoff_time: Optional[Union[str, datetime]]   = None,
         to_row:      bool                             = False,

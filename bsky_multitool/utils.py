@@ -244,6 +244,7 @@ def flatten_json(item: dict) -> dict:
         'follows_count':        author_data.get('follows_count'),     # Total following
         'posts_count':          author_data.get('posts_count'),       # Total posts
         'pinned_post':          author_data.get('pinned_post'),       # Pinned post (if any)
+        'posts_count':          author_data.get('posts_count'),       # Number of posts
 
         # ── Associated Features ─────────────────────────────────
         'author_feedgens':      associated.get('feedgens'),           # Feed generators
@@ -516,8 +517,8 @@ def has_term(item: dict, pattern: Union[str, re.Pattern]) -> bool:
 def master_filter(
     item:        dict,
     filter_term: Optional[Union[str, re.Pattern]] = None,
-    type_filter: Optional[list] = None,
-    has_link:    bool = None
+    type_filter: Optional[list]                   = None,
+    has_link:    bool                             = False
     ) -> bool:
     if type_filter is not None and item['action_type'] not in type_filter:
         return False
@@ -526,7 +527,7 @@ def master_filter(
         if not has_term(item, filter_term):
             return False
 
-    if has_link is not None:
+    if has_link:
         if not has_link_(item):
             return False
         

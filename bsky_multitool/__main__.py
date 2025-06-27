@@ -217,7 +217,6 @@ def historical(
         get_post_data_fn   = ctx.obj["get_post_data"],
         file_format        = file_format,
         batch_size         = batch_size,
-        max_items          = max_items,
         item_counter       = item_counter
     )
 

@@ -28,5 +28,5 @@ class getFollowers:
             if not resp.cursor:
                 break
             cursor = resp.cursor
-
+            
         return followers
