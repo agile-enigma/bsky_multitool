@@ -206,7 +206,7 @@ def historical(
     path.mkdir(parents=True, exist_ok=True)
 
     queue         = []
-    item_counter  = {'count': 0}
+    # item_counter  = {'count': 0}
 
     dump_kwargs = dict(
         queue              = queue,
@@ -217,7 +217,7 @@ def historical(
         get_post_data_fn   = ctx.obj["get_post_data"],
         file_format        = file_format,
         batch_size         = batch_size,
-        item_counter       = item_counter
+        # item_counter       = item_counter
     )
 
     click.echo(f"\nStarting historical query for @{ctx.obj["handle"]}…")

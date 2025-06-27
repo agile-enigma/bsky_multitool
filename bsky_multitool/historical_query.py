@@ -55,7 +55,7 @@ class historicalQuery:
             self.get_author_data_cached  = lru_cache(maxsize=1024)(raw_get_author)
             self.get_post_data_cached    = lru_cache(maxsize=1024)(raw_get_post)
 
-        self.item_count = 0
+        self.item_counter = {'count': 0}
 
     def _search_posts_page(self, filter_term, cursor, limit):
         return self.client.app.bsky.feed.search_posts({
@@ -82,16 +82,16 @@ class historicalQuery:
         }
 
     def _handle_item(self, item, to_row, dump_kwargs, results) -> None:
-        self.item_count += 1
         if not dump_kwargs:
+            self.item_counter['count'] += 1
             item_structured = finalize_item_processing(item, self.get_author_data_cached, self.get_post_data_cached)
             if to_row:
                 results.append(flatten_json(item_structured))
             else:
                 results.append(item_structured)
-            print(f'{self.item_count} items processed', end='\r', flush=True)
+            print(f'{self.item_counter['count']} items processed', end='\r', flush=True)
         else:
-            dump_to_file(item, **dump_kwargs)
+            dump_to_file(item, item_counter = self.item_counter, **dump_kwargs)
 
     def query(
         self,
@@ -138,7 +138,7 @@ class historicalQuery:
                     item = self._convert_post_to_item(post_data)
                     self._handle_item(item, to_row, dump_kwargs, results)
 
-                    if max_items and (self.item_count >= max_items):
+                    if max_items and (self.item_counter['count'] >= max_items):
                         print(f'\nmax_items ({max_items}) reached: stopping...')
                         stop = True
 
