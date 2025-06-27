@@ -244,7 +244,6 @@ def flatten_json(item: dict) -> dict:
         'follows_count':        author_data.get('follows_count'),     # Total following
         'posts_count':          author_data.get('posts_count'),       # Total posts
         'pinned_post':          author_data.get('pinned_post'),       # Pinned post (if any)
-        'posts_count':          author_data.get('posts_count'),       # Number of posts
 
         # ── Associated Features ─────────────────────────────────
         'author_feedgens':      associated.get('feedgens'),           # Feed generators
