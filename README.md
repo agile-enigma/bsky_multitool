@@ -94,13 +94,13 @@ import sys
 from dotenv import load_dotenv
 load_dotenv()
 
-from bsky_multitool import FirehoseStreamer
+from bsky_multitool import firehoseStreamer
 
 
-handle = os.getenv('BSKY_HANDLE')
+handle       = os.getenv('BSKY_HANDLE')
 app_password = os.getenv('BSKY_APP_PSWD')
 
-streamer = FirehoseStreamer(
+streamer = firehoseStreamer(
     handle       = handle,
     app_password = app_password,
 )
@@ -108,12 +108,12 @@ streamer = FirehoseStreamer(
 pattern = re.compile(r'(?=.*\bisrael\b)(?=.*\biran\b)', re.IGNORECASE)
 
 results = streamer.start(
-    filter_term  = pattern,             # optional
-    type_filter  = ['quote', 'repost'], # optional (default: all types)
-    has_link     = False,               # optional (default: False)
-    max_items    = 10,                  # optional (default: no max_items)
-    to_row       = True,                # optional (default: False)
-    cutoff_time  = '2025-06-21 14:15'   # optional (default: no cutoff_time)
+    filter_term  = pattern,             # <- optional
+    type_filter  = ['quote', 'repost'], # <- optional (default: all types)
+    has_link     = False,               # <- optional (default: False)
+    max_items    = 10,                  # <- optional (default: no max_items)
+    to_row       = True,                # <- optional (default: False)
+    cutoff_time  = '2025-06-21 14:15'   # <- optional (default: no cutoff_time)
 )
 ```
 
@@ -126,13 +126,13 @@ import sys
 from dotenv import load_dotenv
 load_dotenv()
 
-from bsky_streamer import HistoricalQuery
+from bsky_multitool import historicalQuery
 
 
-handle = os.getenv('BSKY_HANDLE')
+handle       = os.getenv('BSKY_HANDLE')
 app_password = os.getenv('BSKY_APP_PSWD')
 
-hq = HistoricalQuery(
+hq = historicalQuery(
     handle       = handle,
     app_password = app_password,
 )
@@ -156,18 +156,18 @@ import sys
 from dotenv import load_dotenv
 load_dotenv()
 
-from bsky_multitool import getFollowers
+from bsky_multitool import graphClient
 
 
-handle = os.getenv('BSKY_HANDLE')
+handle       = os.getenv('BSKY_HANDLE')
 app_password = os.getenv('BSKY_APP_PSWD')
 
-gf = getFollowers(
+graph_client = graphClient(
     handle       = handle,
     app_password = app_password,
 )
 
-followers = gf.get_followers(
+followers = graph_client.get_followers(
     did_or_handle = 'bsky.app'
 )
 ```
@@ -181,17 +181,17 @@ import sys
 from dotenv import load_dotenv
 load_dotenv()
 
-from bsky_multitool import getFollowing
+from bsky_multitool import graphClient
 
-handle = os.getenv('BSKY_HANDLE')
+handle       = os.getenv('BSKY_HANDLE')
 app_password = os.getenv('BSKY_APP_PSWD')
 
-gf = getFollowing(
+graph_client = graphClient(
     handle       = handle,
     app_password = app_password
 )
 
-following = gf.get_following(
+following = graph_client.get_following(
     did_or_handle = 'citizenptnewsco.bsky.social'
 )
 ```

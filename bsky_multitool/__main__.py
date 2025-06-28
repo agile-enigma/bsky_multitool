@@ -16,8 +16,7 @@ from dotenv import load_dotenv
 # Import package functions and classes
 from .stream import firehoseStreamer
 from .historical_query import historicalQuery
-from .get_followers import getFollowers
-from .get_following import getFollowing
+from .graph_client import graphClient
 
 from .utils import (
     _safe_json,
@@ -243,6 +242,7 @@ def historical(
             print('\nPerforming final flush...', end='\n\n')
             dump_to_file(None, **dump_kwargs, final_flush=True)
 
+
 #--------------------------***GET FOLLOWERS INTERFACE***-----------------------------
 @cli.command()
 @click.option("--did-or-handle", required=True, help="DID or handle of the account you want the followers of.")
@@ -256,8 +256,8 @@ def historical(
 )
 @click.pass_context
 def followers(ctx, did_or_handle, out_dir, file_format):
-    followersGetter = getFollowers(client= ctx.obj["client"])
-    followers = followersGetter.get_followers(did_or_handle)
+    graph_client = graphClient(client= ctx.obj["client"])
+    followers    = graph_client.get_followers(did_or_handle)
     if not followers:
         print(f'No followers found for {did_or_handle}.')
         sys.exit(0)
@@ -299,8 +299,8 @@ def followers(ctx, did_or_handle, out_dir, file_format):
 )
 @click.pass_context
 def following(ctx, did_or_handle, out_dir, file_format):
-    followingGetter = getFollowing(client= ctx.obj["client"])
-    following = followingGetter.get_following(did_or_handle)
+    graph_client = graphClient(client= ctx.obj["client"])
+    following    = graph_client.get_following(did_or_handle)
     if not following:
         print(f'No accounts followed by {did_or_handle}.')
         sys.exit(0)

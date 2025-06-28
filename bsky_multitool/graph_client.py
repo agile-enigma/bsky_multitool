@@ -1,8 +1,10 @@
 from typing import Optional
+
 import atproto
+
 from .utils import get_client
 
-class getFollowers:
+class graphClient:
     def __init__(
         self,
         handle:             Optional[str]            = None,
@@ -28,5 +30,26 @@ class getFollowers:
             if not resp.cursor:
                 break
             cursor = resp.cursor
-            
+
         return followers
+
+
+    def get_following(self, did_or_handle: str) -> list[dict]:
+        did_or_handle = did_or_handle  # or use their DID
+        cursor = None
+        following = []
+
+        while True:
+            resp = self.client.app.bsky.graph.get_follows({
+                'actor': did_or_handle,
+                'cursor': cursor,
+                'limit': 100  # max per request
+            })
+            following.extend(
+                [following.model_dump() for following in resp.follows]
+            )
+            if not resp.cursor:
+                break
+            cursor = resp.cursor
+
+        return following
