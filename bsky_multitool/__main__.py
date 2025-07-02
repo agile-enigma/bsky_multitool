@@ -214,7 +214,7 @@ def historical(
         get_author_data_fn = ctx.obj["get_author_data"],
         get_post_data_fn   = ctx.obj["get_post_data"],
         file_format        = file_format,
-        batch_size         = batch_size,
+        batch_size         = batch_size
     )
 
     click.echo(f"\nStarting historical query for @{ctx.obj["handle"]}…")
@@ -228,7 +228,6 @@ def historical(
             max_items   = max_items,
             cutoff_time = cutoff_dt if 'cutoff_dt' in locals() else None,
             to_row      = None,
-            batch_size  = batch_size,
             dump_kwargs = dump_kwargs
         )
     except KeyboardInterrupt:

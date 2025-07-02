@@ -103,7 +103,6 @@ class historicalQuery:
         max_items:    Optional[int]                  = None,
         cutoff_time:  Optional[Union[str, datetime]] = None,
         to_row:       bool                           = True,
-        batch_size:   int                            = 100,
         dump_kwargs:  dict                           = None
     ) -> Optional[list]:
 
@@ -119,7 +118,7 @@ class historicalQuery:
         cursor  = None
         stop    = False
 
-        limit   = min(batch_size, max_items) if max_items else batch_size
+        limit   = min(100, max_items) if max_items else 100
 
         try:
             while not stop:
@@ -143,8 +142,9 @@ class historicalQuery:
                     if max_items and (self.item_counter['count'] >= max_items):
                         print(f'\nmax_items ({max_items}) reached: stopping...')
                         stop = True
+                        break
 
-                if not resp.cursor or stop:
+                if not resp.cursor:
                     break
 
                 cursor = resp.cursor
