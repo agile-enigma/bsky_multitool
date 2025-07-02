@@ -85,11 +85,13 @@ class historicalQuery:
         if not dump_kwargs:
             self.item_counter['count'] += 1
             item_structured = finalize_item_processing(item, self.get_author_data_cached, self.get_post_data_cached)
+
             if to_row:
                 results.append(flatten_json(item_structured))
             else:
                 results.append(item_structured)
             print(f'{self.item_counter['count']} items processed', end='\r', flush=True)
+
         else:
             dump_to_file(item, item_counter = self.item_counter, **dump_kwargs)
 
@@ -101,7 +103,7 @@ class historicalQuery:
         max_items:    Optional[int]                  = None,
         cutoff_time:  Optional[Union[str, datetime]] = None,
         to_row:       bool                           = True,
-        batch_size:   int                            = 20, # <- IS THIS EVEN APPLICABLE IN NON-CLI MODE?
+        batch_size:   int                            = 100,
         dump_kwargs:  dict                           = None
     ) -> Optional[list]:
 
