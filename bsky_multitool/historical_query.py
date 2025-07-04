@@ -85,15 +85,111 @@ class historicalQuery:
         if not dump_kwargs:
             self.item_counter['count'] += 1
             item_structured = finalize_item_processing(item, self.get_author_data_cached, self.get_post_data_cached)
-
             if to_row:
                 results.append(flatten_json(item_structured))
             else:
                 results.append(item_structured)
             print(f'{self.item_counter['count']} items processed', end='\r', flush=True)
-
         else:
             dump_to_file(item, item_counter = self.item_counter, **dump_kwargs)
+
+
+    def retry (method, params, retries=5):
+        delay = 5
+        while retries > 0:
+            try:
+                r = method (params)
+                return r
+            except:
+                print ("    error, sleeping " + str (delay) + "s")
+                time.sleep (delay)
+                delay = delay * 2
+                retries = retries - 1
+        return None
+
+
+    def retry(
+        fn: Callable,
+        params,
+        retries: int = 5,
+        delay: float = 5.0,
+        backoff: float = 2.0,
+        exceptions: Tuple[Type[BaseException], ...] = (Exception,),
+        logger: logging.Logger = logging.getLogger(__name__)
+    ):
+        """
+        Retry fn(*args) with exponential backoff.
+        - retries: max attempts
+        - delay: initial wait
+        - backoff: multiplier for each retry
+        - exceptions: exception types to catch
+        """
+        attempt = 1
+        while attempt <= retries:
+            try:
+                return fn(params)
+            except exceptions as e:
+                if attempt == retries:
+                    logger.error("All %d retries failed: %s", retries, e)
+                    raise
+                sleep_time = delay * (backoff ** (attempt - 1))
+                # add jitter of ±10%
+                jitter = random.uniform(0.9, 1.1)  
+                actual_sleep = sleep_time * jitter
+                logger.warning(
+                    "Attempt %d/%d failed (%s), sleeping %.1fs",
+                    attempt, retries, e, actual_sleep
+                )
+                time.sleep(actual_sleep)
+                attempt += 1
+
+
+    def loop_search_posts(
+        query: str,
+        client,
+        limit: int = 50000,
+        page_size: int = 100,
+        sleep_secs: float = 1.0
+    ) -> List[Dict[str, Any]]:
+        """
+        Iteratively search Bluesky posts matching `query`, handling both
+        cursor‐based pagination and recursive 'until:' backfills when
+        cursors disappear. Returns up to `limit` unique posts (by 'uri').
+        """
+        rows: List[Any] = []
+        cursor: Optional[str] = None
+        until: Optional[str] = None
+
+        while len(rows) < limit:
+            # Build query (add until: when backfilling)
+            q = f"{query.strip()}{f' until:{until}' if until else ''}"
+            params = {"q": q, "limit": page_size}
+            if cursor:
+                params["cursor"] = cursor
+
+            r = retry(client.app.bsky.feed.search_posts, params)
+            if not r or not getattr(r, "posts", None):
+                break
+
+            new_posts = r.posts
+            rows.extend(new_posts)
+
+            # Stop if we've hit our overall cap
+            if len(rows) >= limit:
+                break
+
+            # Update cursor; if gone, set up next 'until:' backfill
+            cursor = r.get("cursor")
+            if cursor is None:
+                until = new_posts[-1].indexed_at
+
+            time.sleep(sleep_secs)
+
+        # Dedupe & trim
+        items = [item.model_dump() for item in rows]
+        unique = deduplicate(items, "uri")
+        return unique[:limit]
+
 
     def query(
         self,
@@ -103,6 +199,7 @@ class historicalQuery:
         max_items:    Optional[int]                  = None,
         cutoff_time:  Optional[Union[str, datetime]] = None,
         to_row:       bool                           = True,
+        batch_size:   int                            = None,
         dump_kwargs:  dict                           = None
     ) -> Optional[list]:
 
@@ -118,7 +215,7 @@ class historicalQuery:
         cursor  = None
         stop    = False
 
-        limit   = min(100, max_items) if max_items else 100
+       limit   = min(100, max_items) if max_items else 100
 
         try:
             while not stop:
@@ -142,9 +239,11 @@ class historicalQuery:
                     if max_items and (self.item_counter['count'] >= max_items):
                         print(f'\nmax_items ({max_items}) reached: stopping...')
                         stop = True
-                        break
 
                 if not resp.cursor:
+                    
+
+                 elif stop:
                     break
 
                 cursor = resp.cursor
