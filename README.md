@@ -41,7 +41,7 @@ Example: `bsky_multitool --help`
 #### 🚰 Stream mode command-line options:
 * **--filter-term**: Term to filter stream events by for collection. Can take simple strings, regex strings, or re.Pattern objects (only as a module only).
 * **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
-* **--has-link**: Limit collection to events featuring a link.
+* **--link-filter**: Limit collection to events featuring a link.
 * **--max-items**: The maximum number of items to collect.
 * **--cutoff-time**: Future time at which to terminate the stream. Format: YYYY-MM-DD HH:MM (UTC)
 * **--batch-size**: Number of items to include in each output file. (only relevant when file-format is set to 'json')
@@ -52,11 +52,12 @@ Example: `bsky_multitool --help`
 Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)' --type post --type quote --cutoff-time '2025-06-25 18:30' --file-format csv`
 
 #### 🕰️ Historical mode command-line options:
-* **--filter-term**: Term to filter stream events by for collection. Can only take simple strings.
+* **--query-term**: Term to filter stream events by for collection. Can only take simple strings.
 * **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
-* **--has-link**: Limit collection to events featuring a link.
+* **--link-filter**: Limit collection to events featuring a link.
 * **--max-items**: The maximum number of items to collect.
-* **--cutoff-time**: Past time at which to terminate the stream. Format: YYYY-MM-DD HH:MM (UTC)
+* **--since**: Earliest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
+* **--until**: Latest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
 * **--batch-size**: Number of items to include in each output file. (only relevant when file-format is set to 'json')
 * **--outdir**: The name of the directory where output will be saved. (defaults to 'bsky_historical')
 * **--file-format**: Format of the output file. Options include: 'csv', 'json', and 'jsonl'.
@@ -110,7 +111,7 @@ pattern = re.compile(r'(?=.*\bisrael\b)(?=.*\biran\b)', re.IGNORECASE)
 results = streamer.start(
     filter_term  = pattern,             # <- optional
     type_filter  = ['quote', 'repost'], # <- optional (default: all types)
-    has_link     = False,               # <- optional (default: False)
+    link_filter  = False,               # <- optional (default: False)
     max_items    = 10,                  # <- optional (default: no max_items)
     to_row       = True,                # <- optional (default: False)
     cutoff_time  = '2025-06-21 14:15'   # <- optional (default: no cutoff_time)
@@ -138,12 +139,12 @@ hq = historicalQuery(
 )
 
 response = hq.query(
-    filter_term  = 'Chicago',           # <- optional
+    query_term   = 'Chicago',           # <- optional
     type_filter  = ['quote', 'repost'], # <- optional (default all types)
-    has_link     = False,               # <- optional (default False)
+    link_filter  = False,               # <- optional (default False)
     max_items    = 10,                  # <- optional (default no max_items)
     to_row       = True,                # <- optional (default False)
-    cutoff_time  = '2024-06-21 14:15'   # <- optional (default no cutoff_time)
+    until        = '2024-06-21 14:15'   # <- optional (default no cutoff_time)
 )
 ```
 

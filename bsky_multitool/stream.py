@@ -24,7 +24,6 @@ from .utils import (
     dump_to_file,
     finalize_item_processing,
     flatten_json,
-    from_cli,
     get_author_data,
     get_client,
     get_hashtags,
@@ -32,12 +31,10 @@ from .utils import (
     get_post_data,
     get_target_data,
     get_type,
-    has_link_,
     has_term,
     make_cached_fetchers,
     master_filter,
-    normalize_cutoff_time,
-    retry,
+    normalize_timestamp,
     str_to_re,
     structure_item,
     validate_type_filter,
@@ -112,9 +109,11 @@ class firehoseStreamer:
         app_password:       Optional[str]            = None,
         client:             Optional[atproto.Client] = None,
         get_author_data_fn: Optional[Callable]       = None,
-        get_post_data_fn:   Optional[Callable]       = None
+        get_post_data_fn:   Optional[Callable]       = None,
+        is_from_cli:        bool                     = False
     ):
-        self.client = get_client(handle, app_password, client)
+        self.client      = get_client(handle, app_password, client)
+        self.is_from_cli = is_from_cli
 
         if get_author_data_fn is not None and get_post_data_fn is not None: # <- EXECUTED FROM CLI
             self.get_author_data_cached  = get_author_data_fn
@@ -140,7 +139,7 @@ class firehoseStreamer:
             item,
             filter_term = self.filter_term,
             type_filter = self.type_filter,
-            has_link    = self.has_link
+            link_filter    = self.link_filter
         )
 
     def _collect_handler(self, item: dict) -> None:
@@ -172,29 +171,50 @@ class firehoseStreamer:
         self,
         filter_term: Optional[str]                    = None,
         type_filter: Optional[List[str]]              = None,
-        has_link:    Optional[bool]                   = False,
+        link_filter:    bool                          = False,  # <- False means that posts will not be filtered for links
         max_items:   Optional[int]                    = None,
         cutoff_time: Optional[Union[str, datetime]]   = None,
         to_row:      bool                             = False,
         sink:        Optional[Callable[[dict], None]] = None
     ) -> Optional[List[Dict[str, Any]]]:
 
+        cutoff_dt = None
+        if cutoff_time:
+            try:
+                cutoff_dt = normalize_timestamp(cutoff_time, 'stream')
+            except Exception as err:
+                err_msg = f"Error parsing 'cutoff_time': {err}"
+                if self.is_from_cli:
+                    print(f'{err_msg}\n')
+                    sys.exit(1)
+                # re-raise with same exception class
+                raise err.__class__(err_msg).with_traceback(err.__traceback__)
+
         if filter_term and not isinstance(filter_term, re.Pattern):
-            filter_term = str_to_re(filter_term)
+            try:
+                filter_term = str_to_re(filter_term)
+            except Exception as err:
+                if self.is_from_cli:
+                    print(f"{err}\n")
+                    sys.exit(1)
+                else:
+                    raise 
 
         if type_filter:
-            validate_type_filter(type_filter)
+            try:
+                validate_type_filter(type_filter, 'stream')
+            except Exception as err:
+                if self.is_from_cli:
+                    print(f"{err}\n")
+                    sys.exit(1)
+                else:
+                    raise
 
-        if cutoff_time and not from_cli():
-            cutoff_dt = normalize_cutoff_time(cutoff_time, 'stream')
-        elif cutoff_time:
-            cutoff_dt = cutoff_time
-
+        self.cutoff_time = cutoff_dt
         self.filter_term = filter_term
         self.type_filter = type_filter
-        self.has_link    = has_link
+        self.link_filter = link_filter
         self.max_items   = max_items
-        self.cutoff_time = cutoff_dt if 'cutoff_dt' in locals() else None
         self.to_row      = to_row
 
         self.results  = []
@@ -212,9 +232,9 @@ class firehoseStreamer:
                 )
             )
         except KeyboardInterrupt:
-            print('Interrupted by user — returning collected results.')
+            print('\n\nInterrupted by user — returning collected results.\n')
         except Exception as e:
-            print(f"Unexpected error occurred: {e}")
+            print(f"\n\nUnexpected error occurred: {e}\n")
         finally:
             self._stop_stream()
 

@@ -4,10 +4,11 @@ from functools import lru_cache
 import json
 import os
 from pathlib import Path
+import random
 import re
 import sys
 import time
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 
 import atproto
@@ -17,21 +18,16 @@ from .utils import (
     dump_to_file,
     finalize_item_processing,
     flatten_json,
-    from_cli,
     get_author_data,
     get_client,
     get_hashtags,
     get_mentions,
     get_post_data,
-    get_target_data,
     get_type,
-    has_link_,
-    has_term,
     make_cached_fetchers,
     master_filter,
-    normalize_cutoff_time,
+    normalize_timestamp,
     retry,
-    structure_item,
     validate_type_filter,
 )
 
@@ -39,13 +35,15 @@ from .utils import (
 class historicalQuery:
     def __init__(
         self,
-        handle:       Optional[str]            = None,
-        app_password: Optional[str]            = None,
-        client:       Optional[atproto.Client] = None,
-        get_author_data_fn: Optional[Callable] = None,
-        get_post_data_fn:   Optional[Callable] = None
+        handle:             Optional[str]            = None,
+        app_password:       Optional[str]            = None,
+        client:             Optional[atproto.Client] = None,
+        get_author_data_fn: Optional[Callable]       = None,
+        get_post_data_fn:   Optional[Callable]       = None,
+        is_from_cli:        bool                     = False
     ):
-        self.client = get_client(handle, app_password, client)
+        self.client      = get_client(handle, app_password, client)
+        self.is_from_cli = is_from_cli
 
         if get_author_data_fn is not None and get_post_data_fn is not None: # <- EXECUTED FROM CLI
             self.get_author_data_cached  = get_author_data_fn
@@ -57,12 +55,41 @@ class historicalQuery:
 
         self.item_counter = {'count': 0}
 
-    def _search_posts_page(self, filter_term, cursor, limit):
-        return self.client.app.bsky.feed.search_posts({
-            "q": filter_term,
-            "cursor": cursor,
-            "limit": limit
-        })
+
+    def _retry(
+        self,
+        fn: Callable,
+        params: Dict[str, Any],
+        retries: int = 5,
+        delay: float = 5.0,
+        backoff: float = 2.0,
+    ):
+        """
+        Retry fn(*args) with exponential backoff.
+        - retries: max attempts
+        - delay: initial wait
+        - backoff: multiplier for each retry
+        """
+        attempt = 1
+        while attempt <= retries:
+            try:
+                return fn(params)
+            except Exception as e:
+                if attempt == retries:
+                    print(f"All {retries} retries failed: {e}")
+                    raise
+                sleep_time = delay * (backoff ** (attempt - 1))
+                # add jitter of ±10%
+                jitter = random.uniform(0.9, 1.1)  
+                actual_sleep = sleep_time * jitter
+                print(
+                    f"Attempt {attempt}/{retries} failed ({e}); "
+                    f" sleeping {actual_sleep:.1f}s…"
+                )
+
+                time.sleep(actual_sleep)
+                attempt += 1
+
 
     def _convert_post_to_item(self, post_data: dict) -> dict:
         uri = post_data.get('uri')
@@ -81,176 +108,148 @@ class historicalQuery:
             'post_data':   post_data
         }
 
-    def _handle_item(self, item, to_row, dump_kwargs, results) -> None:
-        if not dump_kwargs:
+    def _handle_item(
+        self,
+        item:        dict,
+        to_row:      bool,
+        dump_kwargs: Optional[dict],
+        results:     list
+    ) -> None:
+
+        if not self.is_from_cli:
             self.item_counter['count'] += 1
-            item_structured = finalize_item_processing(item, self.get_author_data_cached, self.get_post_data_cached)
+            item_structured = finalize_item_processing(
+                item,
+                self.get_author_data_cached,
+                self.get_post_data_cached
+            )
             if to_row:
                 results.append(flatten_json(item_structured))
             else:
                 results.append(item_structured)
-            print(f'{self.item_counter['count']} items processed', end='\r', flush=True)
+            print(f'{self.item_counter['count']} items collected', end='\r', flush=True)
+        
         else:
-            dump_to_file(item, item_counter = self.item_counter, **dump_kwargs)
-
-
-    def retry (method, params, retries=5):
-        delay = 5
-        while retries > 0:
-            try:
-                r = method (params)
-                return r
-            except:
-                print ("    error, sleeping " + str (delay) + "s")
-                time.sleep (delay)
-                delay = delay * 2
-                retries = retries - 1
-        return None
-
-
-    def retry(
-        fn: Callable,
-        params,
-        retries: int = 5,
-        delay: float = 5.0,
-        backoff: float = 2.0,
-        exceptions: Tuple[Type[BaseException], ...] = (Exception,),
-        logger: logging.Logger = logging.getLogger(__name__)
-    ):
-        """
-        Retry fn(*args) with exponential backoff.
-        - retries: max attempts
-        - delay: initial wait
-        - backoff: multiplier for each retry
-        - exceptions: exception types to catch
-        """
-        attempt = 1
-        while attempt <= retries:
-            try:
-                return fn(params)
-            except exceptions as e:
-                if attempt == retries:
-                    logger.error("All %d retries failed: %s", retries, e)
-                    raise
-                sleep_time = delay * (backoff ** (attempt - 1))
-                # add jitter of ±10%
-                jitter = random.uniform(0.9, 1.1)  
-                actual_sleep = sleep_time * jitter
-                logger.warning(
-                    "Attempt %d/%d failed (%s), sleeping %.1fs",
-                    attempt, retries, e, actual_sleep
-                )
-                time.sleep(actual_sleep)
-                attempt += 1
-
-
-    def loop_search_posts(
-        query: str,
-        client,
-        limit: int = 50000,
-        page_size: int = 100,
-        sleep_secs: float = 1.0
-    ) -> List[Dict[str, Any]]:
-        """
-        Iteratively search Bluesky posts matching `query`, handling both
-        cursor‐based pagination and recursive 'until:' backfills when
-        cursors disappear. Returns up to `limit` unique posts (by 'uri').
-        """
-        rows: List[Any] = []
-        cursor: Optional[str] = None
-        until: Optional[str] = None
-
-        while len(rows) < limit:
-            # Build query (add until: when backfilling)
-            q = f"{query.strip()}{f' until:{until}' if until else ''}"
-            params = {"q": q, "limit": page_size}
-            if cursor:
-                params["cursor"] = cursor
-
-            r = retry(client.app.bsky.feed.search_posts, params)
-            if not r or not getattr(r, "posts", None):
-                break
-
-            new_posts = r.posts
-            rows.extend(new_posts)
-
-            # Stop if we've hit our overall cap
-            if len(rows) >= limit:
-                break
-
-            # Update cursor; if gone, set up next 'until:' backfill
-            cursor = r.get("cursor")
-            if cursor is None:
-                until = new_posts[-1].indexed_at
-
-            time.sleep(sleep_secs)
-
-        # Dedupe & trim
-        items = [item.model_dump() for item in rows]
-        unique = deduplicate(items, "uri")
-        return unique[:limit]
+            dump_to_file(item, item_counter=self.item_counter, **dump_kwargs)
 
 
     def query(
         self,
-        filter_term:  str,
-        type_filter:  Optional[list]                 = None,
-        has_link:     bool                           = False,
+        query_term:   str,
+        type_filter:  Optional[List[str]]            = None,
+        link_filter:  bool                           = False,
         max_items:    Optional[int]                  = None,
-        cutoff_time:  Optional[Union[str, datetime]] = None,
+        since:        Optional[Union[str, datetime]] = None,
+        until:        Optional[Union[str, datetime]] = None,
         to_row:       bool                           = True,
-        batch_size:   int                            = None,
-        dump_kwargs:  dict                           = None
+        dump_kwargs:  Optional[dict]                 = None
     ) -> Optional[list]:
 
+        # ---- validate since ----
+        since_formatted = None
+        if since:
+            try:
+                since_formatted = normalize_timestamp(since, 'historical')
+            except Exception as err:
+                err_msg = f"Error parsing 'since': {err}"
+                if self.is_from_cli:
+                    print(f'{err_msg}\n')
+                    sys.exit(1)
+                # re-raise with same exception class
+                raise err.__class__(err_msg).with_traceback(err.__traceback__)
+
+        # ---- validate until ----
+        until_formatted = None
+        if until:
+            try:
+                until_formatted = normalize_timestamp(until, 'historical')
+            except Exception as err:
+                err_msg = f"Error parsing 'until': {err}"
+                if self.is_from_cli:
+                    print(f'{err_msg}\n')
+                    sys.exit(1)
+                raise err.__class__(err_msg).with_traceback(err.__traceback__)
+
+        if since_formatted and until_formatted and since_formatted > until_formatted:
+            err_msg = f"'since' ({since_formatted}) must be < 'until' ({until_formatted})"
+            if self.is_from_cli:
+                print(f'{err_msg}\n')
+                sys.exit(1)
+            raise ValueError(err_msg)
+
         if type_filter:
-            validate_type_filter(type_filter)
+            try:
+                validate_type_filter(type_filter, 'historical')
+            except Exception as err:
+                if self.is_from_cli:
+                    print(f"{err}\n")
+                    sys.exit(1)
+                else:
+                    raise
 
-        if cutoff_time and not from_cli():
-            cutoff_dt = normalize_cutoff_time(cutoff_time, 'historical')
-        elif cutoff_time:
-            cutoff_dt = cutoff_time
+        cursor = None
+        stop   = False
+        limit  = min(100, max_items) if max_items else 100
 
+        unique_uris = set()
         results = []
-        cursor  = None
-        stop    = False
-
-       limit   = min(100, max_items) if max_items else 100
 
         try:
+            # while not stop and (max_items is None or len(results) < max_items):
+            stripped_qt = query_term.strip()
             while not stop:
-                resp = self._search_posts_page(filter_term, cursor, limit)
+                q = (
+                    f"{stripped_qt}"
+                    f"{f' since:{since_formatted}' if since_formatted else ''}"
+                    f"{f' until:{until_formatted}' if until_formatted else ''}"
+                )
+                params = {"q": q, "limit": limit}
+                if cursor:
+                    params["cursor"] = cursor
+
+                resp = self._retry(self.client.app.bsky.feed.search_posts, params)
+                if not resp or not getattr(resp, "posts", None):
+                    break
 
                 for post in resp.posts:
                     post_data = post.model_dump()
-
-                    if 'cutoff_dt' in locals():
-                        created_dt = parser.isoparse(post_data["record"]["created_at"])
-                        if created_dt <= cutoff_dt:
-                            print(
-                                f'\ncutoff_time ({cutoff_dt.isoformat()}) reached: stopping....'
-                            )
-                            stop = True
-                            break
+                    uri = post_data["uri"]
+                    if uri in unique_uris:
+                        continue
+                    unique_uris.add(uri)
 
                     item = self._convert_post_to_item(post_data)
+
+                    if not master_filter(item, link_filter=link_filter, type_filter=type_filter):
+                        continue
                     self._handle_item(item, to_row, dump_kwargs, results)
 
-                    if max_items and (self.item_counter['count'] >= max_items):
-                        print(f'\nmax_items ({max_items}) reached: stopping...')
+                    if max_items and (self.item_counter['count'] == max_items):
+                        print(f'max_items ({max_items}) reached: stopping...\n')
                         stop = True
+                        break
 
-                if not resp.cursor:
-                    
+                if not stop:
+                    # Update cursor; if gone, set up next 'until:' backfill
+                    cursor = resp.cursor
+                    if cursor is None:
+                        until_formatted = item['record']['created_at']
 
-                 elif stop:
-                    break
+                    if max_items and (max_items - self.item_counter['count']) < 100:
+                        limit = max_items - self.item_counter['count']
 
-                cursor = resp.cursor
-                time.sleep(0.25)
+                    time.sleep(1.0)
 
         except KeyboardInterrupt:
-            print("\nInterrupted by user — returning collected results.")
-
-        if not dump_kwargs:          # <- EXECUTED AS MODULE
+            print(
+                f"\n\nInterrupted by user"
+                f"{f' — returning collected results' if not self.is_from_cli else ''}.\n"
+            )
+        except Exception as e:
+            print(
+                f"\n\nUnexpected error occurred: {e}"
+                f"{' Returning collected results.' if not self.is_from_cli else ''}\n"
+            )
+        if not self.is_from_cli:
             return results
+

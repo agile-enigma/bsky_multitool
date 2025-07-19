@@ -25,7 +25,7 @@ from .utils import (
     has_term,
     make_cached_fetchers,
     master_filter,
-    normalize_cutoff_time
+    normalize_timestamp
 )
 
 # Load .env automatically (from project root)
@@ -62,7 +62,7 @@ def cli(ctx, handle, app_password):
 @click.option("--type", "type_", multiple=True, default=None, 
               type=click.Choice(["post", "quote", "repost", "reply", "like", "other"]),
               help="Filter activity type.")
-@click.option("--has-link", is_flag=True, help="Only include posts containing links.")
+@click.option("--link-filter", is_flag=True, help="Only include posts containing links.")
 @click.option("--max-items", type=int, required=False, help="Max number of items to collect.")
 @click.option("--cutoff-time", required=False, help="Cutoff time in YYYY-MM-DD HH:MM format (UTC).")
 @click.option("--batch-size", type=int, default=50, show_default=True)
@@ -77,23 +77,17 @@ def cli(ctx, handle, app_password):
 
 @click.pass_context
 def stream(
-    ctx, filter_term, type_, has_link, batch_size,
+    ctx, filter_term, type_, link_filter, batch_size,
     out_dir, file_format, max_items=None, cutoff_time=None
 ):
     """
     Start live firehose stream
     """
-    if cutoff_time:
-        try:
-            cutoff_dt = normalize_cutoff_time(cutoff_time, 'stream')
-        except (ValueError, TypeError) as err:
-            click.echo(f"{err}", err=True)
-            sys.exit(1)
-
     streamer = firehoseStreamer(
         client             = ctx.obj["client"],
         get_author_data_fn = ctx.obj["get_author_data"],
-        get_post_data_fn   = ctx.obj["get_post_data"]
+        get_post_data_fn   = ctx.obj["get_post_data"],
+        is_from_cli        = True
     )
 
     # Initialize output directory
@@ -110,7 +104,6 @@ def stream(
         queue              = queue,
         outdir_path        = outdir_path,
         base_filename      = base_filename,
-        client             = streamer.client,
         get_author_data_fn = ctx.obj["get_author_data"],
         get_post_data_fn   = ctx.obj["get_post_data"],
         file_format        = file_format,
@@ -134,41 +127,35 @@ def stream(
             )
             streamer._stop_stream()
 
-
-    click.echo(f"\nStarting live stream for @{ctx.obj["handle"]}…")
+    click.echo(f"Starting live stream for @{ctx.obj["handle"]}…\n")
 
     type_ = list(type_) if type_ else None
-    try:
-        streamer.start(
-            filter_term = filter_term,
-            type_filter = type_,
-            has_link    = has_link,
-            max_items   = max_items,
-            cutoff_time = cutoff_dt if 'cutoff_dt' in locals() else None,
-            to_row      = False,
-            sink        = sink_with_count
-        )
-    except KeyboardInterrupt:
-        print('\nInterrupted by user — terminating...')
-        sys.exit(0)
-    except Exception as e:
-        print(f"\nError occurred: {e}")
-        sys.exit(1)
-    finally:
-        if file_format == 'json':
-            print('\nPerforming final flush...', end='\n\n')
-            dump_to_file(None, **dump_kwargs, final_flush=True)
+    streamer.validation_error = False
+    streamer.start(
+        filter_term = filter_term,
+        type_filter = type_,
+        link_filter = link_filter,
+        max_items   = max_items,
+        cutoff_time = cutoff_time,
+        to_row      = False,
+        sink        = sink_with_count
+    )
+
+    if file_format == 'json' and not streamer.validation_error:
+        print('Performing final flush...', end='\n\n')
+        dump_to_file(None, **dump_kwargs, final_flush=True)
 
 
 #--------------------------***HISTORICAL MODE INTERFACE***-----------------------------
 @cli.command()
-@click.option("--filter-term", required=True, help="Search query string.")
+@click.option("--query-term", required=True, help="Search query string.")
 @click.option("--type", "type_", multiple=True, default=None, 
-              type=click.Choice(["post", "quote", "repost", "reply", "like", "other"]),
+              type=click.Choice(["post", "quote", "reply"]),
               help="Filter activity type.")
-@click.option("--has-link", is_flag=True, help="Only include posts containing links.")
+@click.option("--link-filter", is_flag=True, help="Only include posts containing links.")
 @click.option("--max-items", type=int, required=False, help="Max number of items to collect.")
-@click.option("--cutoff-time", required=False, help="Cutoff time in 'YYYY-MM-DD HH:MM' format (UTC).")
+@click.option("--since", required=False, help="'YYYY-MM-DD HH:MM' format (UTC).")
+@click.option("--until", required=False, help="'YYYY-MM-DD HH:MM' format (UTC).")
 @click.option("--batch-size", type=int, default=50, show_default=True)
 @click.option("--out-dir", default="bsky_historical", show_default=True)
 @click.option(
@@ -180,23 +167,18 @@ def stream(
 )
 @click.pass_context
 def historical(
-    ctx, filter_term, type_, has_link, max_items,
-    cutoff_time, batch_size, out_dir, file_format
+    ctx, query_term, type_, link_filter, max_items,
+    since, until, batch_size, out_dir, file_format
 ):
     """
     Perform historical search query
     """
-    if cutoff_time:
-        try:
-            cutoff_dt = normalize_cutoff_time(cutoff_time, 'historical')
-        except (ValueError, TypeError) as err:
-            click.echo(f"\n{err}\n", err=True)
-            sys.exit(1)
 
     hquery = historicalQuery(
         client             = ctx.obj["client"],
         get_author_data_fn = ctx.obj["get_author_data"],
         get_post_data_fn   = ctx.obj["get_post_data"],
+        is_from_cli        = True
     )
 
     timestamp     = time.strftime('%Y%m%d_%H%M%S')
@@ -204,42 +186,35 @@ def historical(
     path          = Path(out_dir)
     path.mkdir(parents=True, exist_ok=True)
 
-    queue         = []
+    queue = []
 
     dump_kwargs = dict(
         queue              = queue,
         outdir_path        = path,
         base_filename      = base_filename,
-        client             = hquery.client,
+        # client             = hquery.client,
         get_author_data_fn = ctx.obj["get_author_data"],
         get_post_data_fn   = ctx.obj["get_post_data"],
         file_format        = file_format,
         batch_size         = batch_size
     )
 
-    click.echo(f"\nStarting historical query for @{ctx.obj["handle"]}…")
+    click.echo(f"\nStarting historical query for @{ctx.obj["handle"]}…\n")
 
-    type_filter = list(type_) if type_ else None
-    try:
-        hquery.query(
-            filter_term = filter_term,
-            type_filter = type_filter,
-            has_link    = has_link,
-            max_items   = max_items,
-            cutoff_time = cutoff_dt if 'cutoff_dt' in locals() else None,
-            to_row      = None,
-            dump_kwargs = dump_kwargs
-        )
-    except KeyboardInterrupt:
-        print('\nInterrupted by user — terminating...')
-        sys.exit(0)
-    except Exception as e:
-        print(f"\nError occurred: {e}")
-        sys.exit(1)
-    finally:
-        if file_format == 'json':
-            print('\nPerforming final flush...', end='\n\n')
-            dump_to_file(None, **dump_kwargs, final_flush=True)
+    hquery.query(
+        query_term  = query_term,
+        type_filter = list(type_) if type_ else None,
+        link_filter = link_filter,
+        max_items   = max_items,
+        since       = since,
+        until       = until,
+        to_row      = False,           # <- NOT APPLICABLE IN CLI MODE
+        dump_kwargs = dump_kwargs
+    )
+
+    if file_format == 'json':
+        print('Performing final flush...', end='\n\n')
+        dump_to_file(None, **dump_kwargs, final_flush=True)
 
 
 #--------------------------***GET FOLLOWERS INTERFACE***-----------------------------

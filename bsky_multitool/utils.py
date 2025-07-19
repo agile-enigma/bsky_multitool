@@ -4,26 +4,17 @@ import csv
 from datetime import datetime, timezone
 from dateutil import parser
 import json
-from typing import Any, Callable, Optional, Union
 import os
 from pathlib import Path
 import re
 import time
+from typing import Any, Callable, Optional, Literal, Union
 
 import atproto
 from atproto_client.exceptions import UnauthorizedError
 
-RUNNING_AS_SCRIPT = (__name__ == "__main__")
-
 
 # ──────────── validation ──────────────────────────────────────────────────
-def from_cli() -> bool:
-    """
-    True when *this* file is the process entry point, False when imported.
-    """
-    return RUNNING_AS_SCRIPT
-
-
 def str_to_re(filter_term: str) -> str:
     try:
         filter_term = re.compile(filter_term, re.IGNORECASE)
@@ -33,8 +24,8 @@ def str_to_re(filter_term: str) -> str:
     return filter_term
 
 
-def normalize_cutoff_time(
-    cutoff: Union[str, datetime],
+def normalize_timestamp(
+    timestamp: Union[str, datetime],
     mode:   str
 ) -> Optional[datetime]:
     """
@@ -44,57 +35,72 @@ def normalize_cutoff_time(
         ValueError / TypeError with clear message when input is invalid.
     """
     # If a string → parse
-    if isinstance(cutoff, str):
+    if isinstance(timestamp, str):
         try:
             # Will parse either `YYYY-MM-DD` or full ISO e.g. `YYYY-MM-DD HH:MM`
             # Handles 'Z' and timezone offsets, too.
-            cutoff_dt = parser.isoparse(cutoff)
+            timestamp_formatted = parser.isoparse(timestamp)
         except (ValueError, parser.ParserError):
             raise ValueError(
-                "cutoff_time string must be 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM' "
+                "timestamp string must be 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM' "
                 "optionally with timezone (e.g. 'Z' or '+02:00')."
             )
     # If already a datetime
-    elif isinstance(cutoff, datetime):
-        cutoff_dt = cutoff
+    elif isinstance(timestamp, datetime):
+        timestamp_formatted = timestamp
     else:
-        raise TypeError("cutoff_time must be str, or datetime")
+        raise TypeError("timestamp must be str, or datetime")
 
     # Make timezone-aware (assume UTC if naïve)
-    if cutoff_dt.tzinfo is None:
-        cutoff_dt = cutoff_dt.replace(tzinfo=timezone.utc)
+    if timestamp_formatted.tzinfo is None:
+        timestamp_formatted = timestamp_formatted.replace(tzinfo=timezone.utc)
     else:
-        cutoff_dt = cutoff_dt.astimezone(timezone.utc)
+        timestamp_formatted = timestamp_formatted.astimezone(timezone.utc)
 
     # Ensure cutoff_time is mode-compatible
     if mode == 'stream':
-        if cutoff_dt <= datetime.now(timezone.utc):
+        if timestamp_formatted <= datetime.now(timezone.utc):
             raise ValueError(
-                "\nValueError: cutoff_time in stream mode must be in the future (UTC)\n"
+                "\nValueError: timestamp in stream mode must be in the future (UTC)\n"
             )
     elif mode == 'historical':
-        if cutoff_dt >= datetime.now(timezone.utc):
+        if timestamp_formatted >= datetime.now(timezone.utc):
             raise ValueError(
-                "\nValueError: cutoff_time in historical mode must be in the past (UTC)\n"
+                "\nValueError: timetamp in historical mode must be in the past (UTC)\n"
             )
+        timestamp_formatted = timestamp_formatted.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
 
-    return cutoff_dt
+    return timestamp_formatted
 
 
-def validate_type_filter(type_filter: list[str]) -> None:
-    if type_filter:
-        if not isinstance(type_filter, list):
-            raise ValueError(
-                "`type_filter` must be a list of strings. Valid types "
-                "include: 'post', 'repost', 'quote', 'reply', and 'like'."
-            )
-        valid_types = {"post","quote","repost","reply","like","other"}
-        invalid = [t for t in type_filter if t not in valid_types]
-        if invalid:
-            raise ValueError(
-                f"Invalid type(s) entered: {invalid}. Valid types include: "
-                "'post', 'repost', 'quote', 'reply', and 'like'."
-            )
+_VALID_TYPES: dict[Literal['stream', 'historical'], set[str]] = {
+    'stream':     {'post', 'repost', 'quote', 'reply', 'like', 'other'},
+    'historical': {'post', 'quote', 'reply'},
+}
+
+def validate_type_filter(
+    type_filter: list[str],
+    mode:        Literal['stream', 'historical'],
+) -> None:
+    """
+    Raise if `type_filter` is not a list of allowed types for the given mode.
+    """
+    if not isinstance(type_filter, list):
+        raise TypeError(
+            "`type_filter` must be a list of strings. "
+            f"Valid types for {mode} mode are: "
+            f"{', '.join(sorted(_VALID_TYPES[mode]))}."
+        )
+
+    valid   = _VALID_TYPES[mode]
+    invalid = set(type_filter) - valid
+
+    if invalid:
+        allowed_list = ', '.join(sorted(valid))
+        raise ValueError(
+            f"Invalid type(s) {sorted(invalid)}. "
+            f"Valid types for {mode} mode are: {allowed_list}."
+        )
 
 
 def get_client(
@@ -200,8 +206,8 @@ def get_target_data(
 
         post_data = post_data.get('record', {})
 
-        match_did      = re.search(r'(did:[^/]+)', target_uri) # <- extract DID from target_uri
-        target_did     = match_did.group(1) if match_did else None
+        match_did   = re.search(r'(did:[^/]+)', target_uri) # <- extract DID from target_uri
+        target_did  = match_did.group(1) if match_did else None
         author_data = get_author_data_fn(target_did) if target_did else {}
 
         post_data.update({
@@ -210,7 +216,7 @@ def get_target_data(
         })
 
         return {
-            'post_data':   post_data,
+            'post_data':    post_data,
             'author_data':  author_data
         }
 
@@ -390,13 +396,14 @@ def structure_item(item: dict, author_data: dict, post_data: dict) -> dict:
 
     item['post_data'].pop('author', None)  # remove author from post_data if present
 
+
     return item
 
 
 def finalize_item_processing(
-    item: dict,
-    get_author_data_fn,
-    get_post_data_fn
+    item:               dict,
+    get_author_data_fn: Callable,
+    get_post_data_fn:   Callable
 ) -> dict:
     author_data = get_author_data_fn(item['repo']) # <- More detailed author data than provided in post_data
     post_data   = get_post_data_fn(item['uri'])    # <- More detailed post data than provided in record_dict
@@ -420,7 +427,6 @@ def dump_to_file(
     queue:              list,
     outdir_path:        Path,
     base_filename:      str,
-    client:             atproto.Client,
     get_author_data_fn: Callable,
     get_post_data_fn:   Callable,
     file_format:        str,
@@ -452,7 +458,11 @@ def dump_to_file(
             with json_path.open('w') as f:
                 json.dump(queue, f, default=_safe_json, indent=2)
 
-            print(f'{len(queue)} items written to {json_path}', end='\r', flush=True)
+            print(
+                f'{len(queue)} items written to {json_path}; '
+                f'{item_counter["count"]} total items collected.',
+                end='\r', flush=True
+            )
 
             queue.clear()
 
@@ -463,7 +473,10 @@ def dump_to_file(
             f.write(json.dumps(item_structured, default=_safe_json) + '\n')
 
         item_counter['count'] += 1
-        print(f'{item_counter['count']} items written to {jsonl_path}', end='\r', flush=True)
+        print(
+            f'{item_counter["count"]} items written to {jsonl_path}.',
+            end='\r', flush=True
+        )
 
     elif file_format == 'csv':
         item_row = flatten_json(item_structured)
@@ -477,11 +490,14 @@ def dump_to_file(
             writer.writerow(item_row)
 
         item_counter['count'] += 1
-        print(f"{item_counter['count']} items written to {csv_path}", end='\r', flush=True)
+        print(
+            f'{item_counter["count"]} items written to {csv_path}.',
+            end='\r', flush=True
+        )
 
 
 # ──────────── filters ───────────────────────────────────────────────────
-def has_link_(item: dict) -> bool:                   # <-- HELPER
+def has_link(item: dict) -> bool:                   # <-- HELPER
     urls = set()
     if item['collection'] == 'app.bsky.feed.post' and item['action'] == 'create':
         record = item['record']
@@ -517,17 +533,15 @@ def master_filter(
     item:        dict,
     filter_term: Optional[Union[str, re.Pattern]] = None,
     type_filter: Optional[list]                   = None,
-    has_link:    bool                             = False
+    link_filter:    bool                          = False
     ) -> bool:
     if type_filter is not None and item['action_type'] not in type_filter:
         return False
-
     if filter_term is not None:
         if not has_term(item, filter_term):
             return False
-
-    if has_link:
-        if not has_link_(item):
+    if link_filter:
+        if not has_link(item):
             return False
         
     return True
