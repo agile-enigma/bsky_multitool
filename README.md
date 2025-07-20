@@ -52,7 +52,7 @@ Example: `bsky_multitool --help`
 Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)' --type post --type quote --cutoff-time '2025-06-25 18:30' --file-format csv`
 
 #### 🕰️ Historical mode command-line options:
-*Bluesky search operators (see [this page](https://www.virtualcuriosities.com/articles/3045/list-of-bluesky-search-operators) for a list of bsky search operators)*
+*<mark>Bluesky search operators (see [this page](https://www.virtualcuriosities.com/articles/3045/list-of-bluesky-search-operators) for a list of bsky search operators)</mark>*
 * **--query-term**: Term to filter stream events by for collection. Can only take simple strings.
 * **--since**: Earliest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
 * **--until**: Latest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
