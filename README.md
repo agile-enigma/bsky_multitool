@@ -61,11 +61,11 @@ Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)'
 * **--lang**: Confine results to posts from a specific language (ISO 639-1). Do not include scheme (e.g., 'https://').
 * **--domain**: Confine results to posts linking to a specific domain (including subdomains and URL paths).
 
-*Post-query filters*
+*<mark>Post-query filters</mark>*
 * **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
 * **--link-filter**: Limit collection to events featuring a link.
 
-*Additional arguments*
+*<mark>Additional arguments</mark>*
 * **--max-items**: The maximum number of items to collect.
 * **--batch-size**: Number of items to include in each output file. (only relevant when file-format is set to 'json')
 * **--outdir**: The name of the directory where output will be saved. (defaults to 'bsky_historical')
