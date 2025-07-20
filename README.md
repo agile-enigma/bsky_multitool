@@ -63,7 +63,7 @@ Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)'
 * **--file-format**: Format of the output file. Options include: 'csv', 'json', and 'jsonl'.
 * **--help**: Print historical mode help menu
 
-Example: `bsky_multitool historical --filter-term 'Gaza' --type quote --type reply --max-items 250 --has-link --file-format csv`
+Example: `bsky_multitool historical --query-term 'Gaza' --type quote --type reply --max-items 250 --link-filter --file-format csv`
 
 #### 👥 Get Followers mode command-line options:
 * **--did-or-handle**: DID or handle of the account you want the followers of.
@@ -82,7 +82,7 @@ Example: `bsky_multitool followers --did-or-handle bsky.app --file-format csv`
 Example: `bsky_multitool following --did-or-handle bsky.app --file-format jsonl`
 
 To run global options alongside a bsky_multitool mode, place them immediately prior to the mode designator:
-`bsky_multitool --handle my_handle.bsky.social --app-password myapppassword historical --filter-term 'Gaza' --type quote --type reply --max-items 250 --has-link --file-format csv`
+`bsky_multitool --handle my_handle.bsky.social --app-password myapppassword historical --query-term 'Gaza' --type quote --type reply --max-items 250 --link-filter --file-format csv`
 
 ### 🧩 Importable Module
 
