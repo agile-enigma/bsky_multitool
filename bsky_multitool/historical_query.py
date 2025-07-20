@@ -21,6 +21,7 @@ from .utils import (
     get_author_data,
     get_client,
     get_hashtags,
+    get_links,
     get_mentions,
     get_post_data,
     get_type,
@@ -84,7 +85,7 @@ class historicalQuery:
                 actual_sleep = sleep_time * jitter
                 print(
                     f"Attempt {attempt}/{retries} failed ({e}); "
-                    f" sleeping {actual_sleep:.1f}s…"
+                    f"sleeping {actual_sleep:.1f}s…"
                 )
 
                 time.sleep(actual_sleep)
@@ -96,7 +97,7 @@ class historicalQuery:
         collection = post_data['record'].get('py_type')
         rkey = re.search(r'at://[^/]+/[^/]+/([^/]+)', uri).group(1)
 
-        return {
+        item = {
             'repo':        post_data['author'].get('did'),
             'action':      'create',
             'uri':         uri,
@@ -107,6 +108,11 @@ class historicalQuery:
             'action_type': get_type(collection, 'create', post_data.get('record')),
             'post_data':   post_data
         }
+
+        item['embedded_urls'] = get_links(item)
+
+        return item
+
 
     def _handle_item(
         self,
@@ -220,7 +226,7 @@ class historicalQuery:
 
                     item = self._convert_post_to_item(post_data)
 
-                    if not master_filter(item, link_filter=link_filter, type_filter=type_filter):
+                    if not master_filter(item, type_filter=type_filter, link_filter=link_filter):
                         continue
                     self._handle_item(item, to_row, dump_kwargs, results)
 

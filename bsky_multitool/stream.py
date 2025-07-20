@@ -27,6 +27,7 @@ from .utils import (
     get_author_data,
     get_client,
     get_hashtags,
+    get_links,
     get_mentions,
     get_post_data,
     get_target_data,
@@ -80,6 +81,8 @@ def on_message(message, test_function, handler):
                                    record_dict
                                 )
                 }
+
+            item['embedded_urls'] = get_links(item)
 
             if test_function(item):
                 handler(item)

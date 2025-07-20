@@ -497,7 +497,7 @@ def dump_to_file(
 
 
 # ──────────── filters ───────────────────────────────────────────────────
-def has_link(item: dict) -> bool:                   # <-- HELPER
+def get_links(item: dict) -> bool:                   # <-- HELPER
     urls = set()
     if item['collection'] == 'app.bsky.feed.post' and item['action'] == 'create':
         record = item['record']
@@ -515,11 +515,7 @@ def has_link(item: dict) -> bool:                   # <-- HELPER
                 if uri.startswith('http'):
                     urls.add(uri)
 
-    if not urls:
-        return False
-    item['embedded_urls'] = list(urls)
-
-    return True
+    return list(urls)
 
 
 def has_term(item: dict, pattern: Union[str, re.Pattern]) -> bool:
@@ -533,15 +529,18 @@ def master_filter(
     item:        dict,
     filter_term: Optional[Union[str, re.Pattern]] = None,
     type_filter: Optional[list]                   = None,
-    link_filter:    bool                          = False
+    link_filter: bool                             = False
     ) -> bool:
-    if type_filter is not None and item['action_type'] not in type_filter:
-        return False
+
     if filter_term is not None:
         if not has_term(item, filter_term):
             return False
+
+    if type_filter is not None and item['action_type'] not in type_filter:
+        return False
+
     if link_filter:
-        if not has_link(item):
+        if not item['embedded_urls']:
             return False
         
     return True
