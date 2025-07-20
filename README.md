@@ -159,6 +159,7 @@ response = hq.query(
     until        = '2024-06-21 14:15'   # <- optional (default no cutoff_time)
 )
 ```
+If preferred, Bluesky search operators-based queries can be conducted entirely via a query_term argument.
 
 **👥 Get Followers**:
 ```python
