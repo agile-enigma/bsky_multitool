@@ -52,18 +52,28 @@ Example: `bsky_multitool --help`
 Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)' --type post --type quote --cutoff-time '2025-06-25 18:30' --file-format csv`
 
 #### 🕰️ Historical mode command-line options:
+*Bluesky seasrch operators (see [this page](https://www.virtualcuriosities.com/articles/3045/list-of-bluesky-search-operators) for a list of bsky search operators)*
 * **--query-term**: Term to filter stream events by for collection. Can only take simple strings.
-* **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
-* **--link-filter**: Limit collection to events featuring a link.
-* **--max-items**: The maximum number of items to collect.
 * **--since**: Earliest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
 * **--until**: Latest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
+* **--from**: Confine results to posts from a specific user. Do not include @). 
+* **--to**: Confine results to posts mentioning a specific user. Do not include @).
+* **--lang**: Confine results to posts from a specific language (ISO 639-1). Do not include scheme (e.g., 'https://').
+* **--domain**: Confine results to posts linking to a specific domain (including subdomains and URL paths).
+
+*Post-query filters*
+* **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
+* **--link-filter**: Limit collection to events featuring a link.
+
+* **--max-items**: The maximum number of items to collect.
 * **--batch-size**: Number of items to include in each output file. (only relevant when file-format is set to 'json')
 * **--outdir**: The name of the directory where output will be saved. (defaults to 'bsky_historical')
 * **--file-format**: Format of the output file. Options include: 'csv', 'json', and 'jsonl'.
 * **--help**: Print historical mode help menu
 
 Example: `bsky_multitool historical --query-term 'Gaza' --type quote --type reply --max-items 250 --link-filter --file-format csv`
+
+If preferred, bsky operators-based queries can be conducted entirely via the query-term argument. Example: `bsky_multitool historical --query-term 'Ukraine from:roalyr.bsky.social since:2025-05-01'`.
 
 #### 👥 Get Followers mode command-line options:
 * **--did-or-handle**: DID or handle of the account you want the followers of.
@@ -139,7 +149,8 @@ hq = historicalQuery(
 )
 
 response = hq.query(
-    query_term   = 'Chicago',           # <- optional
+    query_term   = 'investigation',           # <- required
+    from_user    = 'bellingcat.com',
     type_filter  = ['quote', 'repost'], # <- optional (default all types)
     link_filter  = False,               # <- optional (default False)
     max_items    = 10,                  # <- optional (default no max_items)

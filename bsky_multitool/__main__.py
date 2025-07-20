@@ -149,13 +149,19 @@ def stream(
 #--------------------------***HISTORICAL MODE INTERFACE***-----------------------------
 @cli.command()
 @click.option("--query-term", required=True, help="Search query string.")
+@click.option("--since", required=False, help="'YYYY-MM-DD HH:MM' format (UTC).")
+@click.option("--until", required=False, help="'YYYY-MM-DD HH:MM' format (UTC).")
+@click.option("--from", "from_user", help="Confine results to posts from a specific user (do not include @).")
+@click.option("--to",   "to_user",   help="Confine results to posts mentioning a specific user (do not include @).")
+@click.option("--lang",              help="Confine results to posts from a specific language (ISO 639-1).")
+@click.option("--domain",
+                help="Confine results to posts linking to a specific domain (including subdomains and URL paths)."
+             )
 @click.option("--type", "type_", multiple=True, default=None, 
               type=click.Choice(["post", "quote", "reply"]),
               help="Filter activity type.")
 @click.option("--link-filter", is_flag=True, help="Only include posts containing links.")
 @click.option("--max-items", type=int, required=False, help="Max number of items to collect.")
-@click.option("--since", required=False, help="'YYYY-MM-DD HH:MM' format (UTC).")
-@click.option("--until", required=False, help="'YYYY-MM-DD HH:MM' format (UTC).")
 @click.option("--batch-size", type=int, default=50, show_default=True)
 @click.option("--out-dir", default="bsky_historical", show_default=True)
 @click.option(
@@ -167,8 +173,9 @@ def stream(
 )
 @click.pass_context
 def historical(
-    ctx, query_term, type_, link_filter, max_items,
-    since, until, batch_size, out_dir, file_format
+    ctx, query_term, since, until, from_user, to_user,
+    lang, domain, type_, link_filter, max_items,
+    batch_size, out_dir, file_format
 ):
     """
     Perform historical search query
@@ -203,11 +210,15 @@ def historical(
 
     hquery.query(
         query_term  = query_term,
+        since       = since,
+        until       = until,
+        from_user   = from_user,
+        to_user     = to_user,
+        lang        = lang,
+        domain      = domain,
         type_filter = list(type_) if type_ else None,
         link_filter = link_filter,
         max_items   = max_items,
-        since       = since,
-        until       = until,
         to_row      = False,           # <- NOT APPLICABLE IN CLI MODE
         dump_kwargs = dump_kwargs
     )

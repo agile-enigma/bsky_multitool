@@ -142,11 +142,15 @@ class historicalQuery:
     def query(
         self,
         query_term:   str,
+        since:        Optional[Union[str, datetime]] = None,
+        until:        Optional[Union[str, datetime]] = None,
+        from_user:    str                            = None,
+        to_user:      str                            = None,
+        lang:         str                            = None,
+        domain:       str                            = None,
         type_filter:  Optional[List[str]]            = None,
         link_filter:  bool                           = False,
         max_items:    Optional[int]                  = None,
-        since:        Optional[Union[str, datetime]] = None,
-        until:        Optional[Union[str, datetime]] = None,
         to_row:       bool                           = True,
         dump_kwargs:  Optional[dict]                 = None
     ) -> Optional[list]:
@@ -208,6 +212,10 @@ class historicalQuery:
                     f"{stripped_qt}"
                     f"{f' since:{since_formatted}' if since_formatted else ''}"
                     f"{f' until:{until_formatted}' if until_formatted else ''}"
+                    f"{f' from:{from_user}' if from_user else ''}"
+                    f"{f' to:{to_user}' if to_user else ''}"
+                    f"{f' lang:{lang}' if lang else ''}"
+                    f"{f' domain:{domain}' if domain else ''}"
                 )
                 params = {"q": q, "limit": limit}
                 if cursor:
