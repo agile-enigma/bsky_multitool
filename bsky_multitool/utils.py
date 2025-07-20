@@ -42,14 +42,14 @@ def normalize_timestamp(
             timestamp_formatted = parser.isoparse(timestamp)
         except (ValueError, parser.ParserError):
             raise ValueError(
-                "timestamp string must be 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM' "
+                "Timestamp string must be 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM' "
                 "optionally with timezone (e.g. 'Z' or '+02:00')."
             )
     # If already a datetime
     elif isinstance(timestamp, datetime):
         timestamp_formatted = timestamp
     else:
-        raise TypeError("timestamp must be str, or datetime")
+        raise TypeError("Timestamp must be str, or datetime")
 
     # Make timezone-aware (assume UTC if naïve)
     if timestamp_formatted.tzinfo is None:
@@ -61,12 +61,12 @@ def normalize_timestamp(
     if mode == 'stream':
         if timestamp_formatted <= datetime.now(timezone.utc):
             raise ValueError(
-                "\nValueError: timestamp in stream mode must be in the future (UTC)\n"
+                "Timestamp in stream mode must be in the future (UTC)"
             )
     elif mode == 'historical':
         if timestamp_formatted >= datetime.now(timezone.utc):
             raise ValueError(
-                "\nValueError: timetamp in historical mode must be in the past (UTC)\n"
+                "Timetamp in historical mode must be in the past (UTC)"
             )
         timestamp_formatted = timestamp_formatted.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
 
