@@ -52,7 +52,7 @@ Example: `bsky_multitool --help`
 Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)' --type post --type quote --cutoff-time '2025-06-25 18:30' --file-format csv`
 
 #### 🕰️ Historical mode command-line options:
-*Bluesky seasrch operators (see [this page](https://www.virtualcuriosities.com/articles/3045/list-of-bluesky-search-operators) for a list of bsky search operators)*
+<u>Bluesky search operators (see [this page](https://www.virtualcuriosities.com/articles/3045/list-of-bluesky-search-operators) for a list of bsky search operators)</u>
 * **--query-term**: Term to filter stream events by for collection. Can only take simple strings.
 * **--since**: Earliest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
 * **--until**: Latest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
@@ -61,7 +61,7 @@ Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)'
 * **--lang**: Confine results to posts from a specific language (ISO 639-1). Do not include scheme (e.g., 'https://').
 * **--domain**: Confine results to posts linking to a specific domain (including subdomains and URL paths).
 
-*Post-query filters*
+<u>Post-query filters</u>
 * **--type**: Event types to filter stream events by for collection. Types include: 'post', 'quote', 'repost', 'reply', 'like', 'other'.
 * **--link-filter**: Limit collection to events featuring a link.
 
