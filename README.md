@@ -58,7 +58,7 @@ Example: `bsky_multitool stream --filter-term '(?=.*\bgaza\b)(?=.*\bgenocide\b)'
 * **--until**: Latest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
 * **--from**: Confine results to posts from a specific user. Do not include @). 
 * **--to**: Confine results to posts mentioning a specific user. Do not include @).
-* **--lang**: Confine results to posts from a specific language (ISO 639-1). Do not include scheme (e.g., 'https://').
+* **--lang**: Confine results to posts from a specific language  in [ISO 639-1 format](https://www.loc.gov/standards/iso639-2/php/code_list.php). Do not include scheme (e.g., 'https://').
 * **--domain**: Confine results to posts linking to a specific domain (including subdomains and URL paths).
 
 *<mark>Post-query filters</mark>*
