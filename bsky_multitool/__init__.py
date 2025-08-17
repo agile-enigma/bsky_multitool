@@ -2,3 +2,4 @@
 from .stream import firehoseStreamer
 from .historical_query import historicalQuery
 from .graph_client import graphClient
+from .repost_graph import repostGraph

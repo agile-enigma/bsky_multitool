@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from .stream import firehoseStreamer
 from .historical_query import historicalQuery
 from .graph_client import graphClient
+from .repost_graph import repostGraph
 
 from .utils import (
     _safe_json,
@@ -92,7 +93,7 @@ def stream(
 
     # Initialize output directory
     timestamp     = time.strftime('%Y%m%d_%H%M%S')
-    base_filename = f"bsky_stream_{timestamp}"
+    base_filename = f"bsky_stream_{filter_term}_{timestamp}"
     outdir_path   = Path(out_dir)
     outdir_path.mkdir(parents=True, exist_ok=True)
 
@@ -189,7 +190,7 @@ def historical(
     )
 
     timestamp     = time.strftime('%Y%m%d_%H%M%S')
-    base_filename = f"bsky_stream_{timestamp}"
+    base_filename = f"bsky_historical_{query_term}_{timestamp}"
     path          = Path(out_dir)
     path.mkdir(parents=True, exist_ok=True)
 
@@ -226,6 +227,50 @@ def historical(
     if file_format == 'json':
         print('Performing final flush...', end='\n\n')
         dump_to_file(None, **dump_kwargs, final_flush=True)
+
+
+#-----------------------***REPOST NETWORK MODE INTERFACE***--------------------------
+@cli.command()
+@click.option("--query-term", required=True, help="Search query string.")
+@click.option("--since", required=False, help="'YYYY-MM-DD HH:MM' format (UTC).")
+@click.option("--until", required=False, help="'YYYY-MM-DD HH:MM' format (UTC).")
+@click.option("--max-items", type=int, required=False, help="Max number of items to collect.")
+@click.option("--min-reposts", type=int, required=False, help="Min number of reposts a post must have to be included.")
+@click.option("--out-dir", default="bsky_repostnet", show_default=True)
+
+@click.pass_context
+def repost_net(
+    ctx, query_term, since, until, max_items, min_reposts, out_dir
+):
+    """
+    Perform repost network query
+    """
+
+    ng = repostGraph(
+        client             = ctx.obj["client"],
+        # get_author_data_fn = ctx.obj["get_author_data"],
+        # get_post_data_fn   = ctx.obj["get_post_data"],
+        is_from_cli        = True
+    )
+
+    timestamp     = time.strftime('%Y%m%d_%H%M%S')
+    base_filename = f"bsky_repostnet_{query_term}_{timestamp}"
+    outdir_path   = Path(out_dir)
+    outdir_path.mkdir(parents=True, exist_ok=True)
+    out_file_path = outdir_path / f"{base_filename}.csv"
+
+    click.echo(f"\nStarting repost network query for @{ctx.obj["handle"]}…\n")
+
+    df = ng.generate_network_graph(
+        query_term  = query_term,
+        since       = since,
+        until       = until,
+        max_items   = max_items,
+        min_reposts = 10 if not min_reposts else min_reposts
+    )
+
+    df.to_csv (out_file_path, index=False)
+
 
 
 #--------------------------***GET FOLLOWERS INTERFACE***-----------------------------

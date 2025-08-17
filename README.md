@@ -1,10 +1,13 @@
 # bsky_multitool
 
-**bsky_multitool** is a Python interface for collecting data from the AT Protocol underlying Bluesky. It can be used both as a command-line tool or as an importable module and is geared towards media analysis.
+**bsky_multitool** is a Python interface for collecting data from the AT Protocol underlying Bluesky and is geared towards media analysis. It can be used both as a command-line tool or as an importable module.
 
 It supports two modes:
 1. **stream**: Collect data in real-time as it is streamed through the AT Firehose
 2. **historical**: Collect historical Bluesky data.
+3. **repost-net**: Build a repost graph based on query parameters.
+4. **following**: Get the accounts followed by a provided account.
+5. **followers**: Get followers for a provided account.
 
 Output fields can be found at the bottom of this README.
 
@@ -76,6 +79,21 @@ Example: `bsky_multitool historical --query-term 'Gaza' --type quote --type repl
 
 If preferred, bsky operators-based queries can be conducted entirely via the query-term argument. Example: `bsky_multitool historical --query-term 'Ukraine from:roalyr.bsky.social since:2025-05-01'`.
 
+#### 🕸️ Repost Network mode command-line options:
+*<mark>Bluesky search operators (see [this page](https://www.virtualcuriosities.com/articles/3045/list-of-bluesky-search-operators) for a list of bsky search operators)</mark>*
+* **--query-term**: Term to filter stream events by for collection. Can only take simple strings.
+* **--since**: Earliest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
+* **--until**: Latest creation date for collected posts. Format: YYYY-MM-DD HH:MM (UTC)
+
+*<mark>Additional arguments</mark>*
+* **--max-items**: The maximum number of items to collect.
+* **--min-reposts**: Minimum number of reposts a post must have to be included..
+* **--outdir**: The name of the directory where output will be saved. (defaults to 'bsky_historical')
+* **--help**: Print historical mode help menu
+
+Example: `bsky_multitool repost-net --query-term Epstein --since 2025-07-01 --until 2025-08-16 --max-items 100`
+
+
 #### 👥 Get Followers mode command-line options:
 * **--did-or-handle**: DID or handle of the account you want the followers of.
 * **--outdir**: The name of the directory where output will be saved. (defaults to 'bsky_followers')
@@ -97,11 +115,10 @@ To run global options alongside a bsky_multitool mode, place them immediately pr
 
 ### 🧩 Importable Module
 
-**🚰 Streamer**:
+**🚰 firehoseStreamer**:
 ```python
 import os
 import re
-import sys
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -129,11 +146,9 @@ results = streamer.start(
 )
 ```
 
-**🕰️ HistoricalQuery**:
+**🕰️ historicalQuery**:
 ```python
 import os
-import re
-import sys
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -161,11 +176,35 @@ response = hq.query(
 ```
 If preferred, Bluesky search operators-based queries can be conducted entirely via a query_term argument.
 
+**🕰🕸️ repostGraph**:
+```python
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from bsky_multitool import repostGraph
+
+
+handle       = os.getenv('BSKY_HANDLE')
+app_password = os.getenv('BSKY_APP_PSWD')
+
+rq = repostGraph(
+    handle       = handle,
+    app_password = app_password,
+)
+
+df = rg.generate_network_graph(
+    query_term = 'Epstein',
+    since      = '2025-07-01',
+    until      = '2025-08-16',
+    max_items  = 100
+)
+```
+
 **👥 Get Followers**:
 ```python
 import os
-import re
-import sys
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -189,8 +228,6 @@ followers = graph_client.get_followers(
 **👣 Get Following**:
 ```python
 import os
-import re
-import sys
 
 from dotenv import load_dotenv
 load_dotenv()

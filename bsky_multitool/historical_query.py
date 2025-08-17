@@ -1,3 +1,5 @@
+import atproto
+
 from datetime import datetime
 from dateutil import parser
 from functools import lru_cache
@@ -9,9 +11,6 @@ import re
 import sys
 import time
 from typing import Any, Callable, Dict, List, Optional, Union
-
-
-import atproto
 
 from .utils import (
     _safe_json,
